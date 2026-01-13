@@ -1,0 +1,146 @@
+name: Validate & Deploy Dashboard
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Validate Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install CLASP
+        run: npm install -g @google/clasp
+
+      - name: Validate Apps Script syntax
+        run: |
+          echo "🔍 Validating Apps Script files..."
+          cd apps-script
+          
+          # Check for required functions
+          if ! grep -q "function doGet" Code.gs; then
+            echo "❌ Error: doGet function not found in Code.gs"
+            exit 1
+          fi
+          
+          if ! grep -q "function doPost" Code.gs; then
+            echo "❌ Error: doPost function not found in Code.gs"
+            exit 1
+          fi
+          
+          if ! grep -q "function getDataForFrontend" Code.gs; then
+            echo "❌ Error: getDataForFrontend function not found in Code.gs"
+            exit 1
+          fi
+          
+          if ! grep -q "function testDeployment" Code.gs; then
+            echo "❌ Error: testDeployment function not found in Code.gs"
+            exit 1
+          fi
+          
+          echo "✅ Apps Script validation passed"
+
+      - name: Validate HTML syntax
+        run: |
+          echo "🔍 Validating HTML files..."
+          cd apps-script
+          
+          if ! grep -q "<html" Index.html; then
+            echo "❌ Error: Invalid HTML structure in Index.html"
+            exit 1
+          fi
+          
+          if ! grep -q "google.script.run" Index.html; then
+            echo "❌ Error: google.script.run not found in Index.html"
+            exit 1
+          fi
+          
+          echo "✅ HTML validation passed"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          cd python
+          pip install -r requirements.txt
+
+      - name: Validate Python syntax
+        run: |
+          echo "🔍 Validating Python files..."
+          cd python
+          python -m py_compile colab_integration.py
+          echo "✅ Python syntax validation passed"
+
+      - name: Run Python linting
+        run: |
+          pip install flake8
+          cd python
+          flake8 colab_integration.py --max-line-length=100 --ignore=E501,W503 || true
+          echo "ℹ️ Linting complete (warnings only)"
+
+  deploy:
+    name: Deploy to Apps Script
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install CLASP
+        run: npm install -g @google/clasp
+
+      - name: Deploy notification
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "🚀 DEPLOYMENT READY"
+          echo "═══════════════════════════════════════════"
+          echo ""
+          echo "Automated deployment requires CLASP credentials."
+          echo ""
+          echo "To enable automated deployment:"
+          echo "1. Run 'cat ~/.clasprc.json' locally after 'clasp login'"
+          echo "2. Add contents as GitHub Secret: CLASP_CREDENTIALS"
+          echo "3. Uncomment the deployment step below"
+          echo ""
+          echo "For now, deploy manually:"
+          echo "  cd apps-script"
+          echo "  clasp push"
+          echo "  clasp deploy --description 'GitHub Actions Deploy'"
+          echo ""
+          echo "═══════════════════════════════════════════"
+
+      # Uncomment below to enable automated deployment
+      # - name: Configure CLASP credentials
+      #   run: |
+      #     echo '${{ secrets.CLASP_CREDENTIALS }}' > ~/.clasprc.json
+      #
+      # - name: Push to Apps Script
+      #   run: |
+      #     cd apps-script
+      #     clasp push
+      #
+      # - name: Deploy
+      #   run: |
+      #     cd apps-script
+      #     clasp deploy --description "Automated deploy from GitHub Actions"

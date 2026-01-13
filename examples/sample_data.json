@@ -1,0 +1,64 @@
+{
+    "description": "Example payload structure for POST requests to the Tri-State Dashboard API",
+    "schema": {
+        "id": {
+            "type": "integer or string",
+            "description": "Unique identifier for the data entry",
+            "required": true
+        },
+        "result": {
+            "type": "string",
+            "description": "Processing result or status description",
+            "required": true
+        },
+        "score": {
+            "type": "number",
+            "description": "Performance metric (typically 0-100)",
+            "required": true
+        }
+    },
+    "examples": [
+        {
+            "id": 101,
+            "result": "Data processing completed successfully",
+            "score": 95.5
+        },
+        {
+            "id": 102,
+            "result": "Model training epoch 10/10 finished",
+            "score": 88.2
+        },
+        {
+            "id": 103,
+            "result": "Validation accuracy reached target",
+            "score": 92.0
+        },
+        {
+            "id": "batch_001",
+            "result": "Batch processing complete - 1500 items",
+            "score": 100
+        },
+        {
+            "id": "error_case",
+            "result": "Partial success - 3 items failed validation",
+            "score": 75.5
+        }
+    ],
+    "response_format": {
+        "success": {
+            "status": "success",
+            "row": 15,
+            "executionTime": 0.234
+        },
+        "error": {
+            "status": "error",
+            "message": "Missing required fields: score",
+            "code": "MISSING_FIELDS",
+            "required": [
+                "id",
+                "result",
+                "score"
+            ]
+        }
+    }
+}

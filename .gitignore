@@ -1,0 +1,46 @@
+# Node modules (if using npm for clasp)
+node_modules/
+
+# CLASP generated files
+apps-script/.clasp.json
+
+# Environment variables and secrets
+*.env
+.env.local
+**/.env
+!example_config.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Google Apps Script push artifacts
+apps-script/.clasprc.json
+
+# Build outputs
+dist/
+build/

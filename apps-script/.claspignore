@@ -1,0 +1,23 @@
+# Version control
+.git
+.gitignore
+
+# Documentation
+README.md
+docs/
+
+# Python files
+python/
+
+# Examples
+examples/
+
+# CI/CD
+.github/
+
+# Local config
+.env*
+*.env
+
+# License
+LICENSE

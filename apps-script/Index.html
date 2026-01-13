@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            text-align: center;
+            min-width: 160px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        #output {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            min-height: 200px;
+        }
+
+        .card {
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #667eea;
+            padding: 18px 22px;
+            margin: 15px 0;
+            border-radius: 10px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateX(8px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            border-left-color: #764ba2;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-id {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .card-score {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .card-result {
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .card-time {
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .empty-state {
+            background: #fff3cd;
+            border-color: #ffc107;
+            border-left-color: #ffc107;
+            color: #856404;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+        }
+
+        .error-state {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            border-left-color: #dc3545;
+            color: #721c24;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .loading:after {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 12px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .refresh-status {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .stat {
+                padding: 15px 25px;
+                min-width: 120px;
+            }
+
+            .stat-value {
+                font-size: 1.8em;
+            }
+
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 Live Data Dashboard</h1>
+        <div id="stats" class="stats"></div>
+        <div id="output" class="loading">Loading data...</div>
+        <div id="refresh-status" class="refresh-status"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const POLLING_INTERVAL = 30000; // 30 seconds
+        let dataCache = [];
+        let lastRefresh = null;
+
+        // Initialize on page load
+        window.onload = function () {
+            console.log('[Dashboard] Initializing...');
+            loadData();
+            setInterval(loadData, POLLING_INTERVAL);
+            updateRefreshStatus();
+            setInterval(updateRefreshStatus, 1000);
+        };
+
+        /**
+         * Loads data from backend via google.script.run
+         */
+        function loadData() {
+            console.log('[Dashboard] Fetching data...');
+            google.script.run
+                .withSuccessHandler(handleSuccess)
+                .withFailureHandler(handleError)
+                .getDataForFrontend();
+        }
+
+        /**
+         * Handles successful data load
+         * @param {Array<Array>} data - 2D array from sheet
+         */
+        function handleSuccess(data) {
+            console.log('[Dashboard] Received ' + (data ? data.length : 0) + ' rows');
+            lastRefresh = new Date();
+            dataCache = data || [];
+
+            if (!data || data.length <= 1) {
+                showEmptyState();
+            } else {
+                showData(data);
+                updateStats(data);
+            }
+        }
+
+        /**
+         * Displays data cards in reverse chronological order
+         * @param {Array<Array>} data - Sheet data with headers
+         */
+        function showData(data) {
+            var html = '';
+
+            // Skip header row (index 0), display newest first
+            for (var i = data.length - 1; i >= 1; i--) {
+                var timestamp = new Date(data[i][0]);
+                var formattedTime = formatTimestamp(timestamp);
+                var id = escapeHtml(String(data[i][1]));
+                var result = escapeHtml(String(data[i][2]));
+                var score = escapeHtml(String(data[i][3]));
+
+                html += '<div class="card">' +
+                    '<div class="card-header">' +
+                    '<span class="card-id">ID: ' + id + '</span>' +
+                    '<span class="card-score">' + score + '</span>' +
+                    '</div>' +
+                    '<div class="card-result">' + result + '</div>' +
+                    '<div class="card-time">🕒 ' + formattedTime + '</div>' +
+                    '</div>';
+            }
+
+            document.getElementById('output').innerHTML = html;
+        }
+
+        /**
+         * Updates statistics display
+         * @param {Array<Array>} data - Sheet data
+         */
+        function updateStats(data) {
+            var totalRecords = data.length - 1; // Exclude header
+            var avgScore = 0;
+            var highScore = 0;
+
+            if (totalRecords > 0) {
+                var sum = 0;
+                for (var i = 1; i < data.length; i++) {
+                    var score = parseFloat(data[i][3]) || 0;
+                    sum += score;
+                    if (score > highScore) highScore = score;
+                }
+                avgScore = (sum / totalRecords).toFixed(1);
+            }
+
+            var statsHtml =
+                '<div class="stat">' +
+                '<span class="stat-value">' + totalRecords + '</span>' +
+                '<span class="stat-label">Total Records</span>' +
+                '</div>' +
+                '<div class="stat">' +
+                '<span class="stat-value">' + avgScore + '</span>' +
+                '<span class="stat-label">Avg Score</span>' +
+                '</div>' +
+                '<div class="stat">' +
+                '<span class="stat-value">' + highScore + '</span>' +
+                '<span class="stat-label">High Score</span>' +
+                '</div>';
+
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+
+        /**
+         * Shows empty state message
+         */
+        function showEmptyState() {
+            document.getElementById('output').innerHTML =
+                '<div class="card empty-state">' +
+                '<h3>⚠️ No Data Available</h3>' +
+                '<p>Run your Python script to populate this dashboard.</p>' +
+                '</div>';
+            document.getElementById('stats').innerHTML = '';
+        }
+
+        /**
+         * Handles data load errors
+         * @param {Error} error - Error object
+         */
+        function handleError(error) {
+            console.error('[Dashboard] Error:', error);
+            document.getElementById('output').innerHTML =
+                '<div class="card error-state">' +
+                '<h3>❌ Error Loading Data</h3>' +
+                '<p>' + escapeHtml(error.message || String(error)) + '</p>' +
+                '<p><small>Check browser console for details</small></p>' +
+                '</div>';
+        }
+
+        /**
+         * Updates the refresh status display
+         */
+        function updateRefreshStatus() {
+            var statusEl = document.getElementById('refresh-status');
+            if (!lastRefresh) {
+                statusEl.textContent = '⏳ Loading...';
+                return;
+            }
+
+            var secondsAgo = Math.floor((new Date() - lastRefresh) / 1000);
+            var nextRefresh = Math.max(0, 30 - secondsAgo);
+
+            statusEl.textContent = '🔄 Auto-refresh in ' + nextRefresh + 's | Last update: ' +
+                lastRefresh.toLocaleTimeString();
+        }
+
+        /**
+         * Formats timestamp for display with relative time
+         * @param {Date} date - Date object
+         * @return {String} Formatted timestamp
+         */
+        function formatTimestamp(date) {
+            if (!(date instanceof Date) || isNaN(date)) {
+                return 'Invalid Date';
+            }
+
+            var now = new Date();
+            var diffMs = now - date;
+            var diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return diffMins + ' minute' + (diffMins > 1 ? 's' : '') + ' ago';
+            if (diffMins < 1440) {
+                var hours = Math.floor(diffMins / 60);
+                return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
+            }
+
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        /**
+         * Escapes HTML to prevent XSS attacks
+         * @param {String} text - Raw text
+         * @return {String} Escaped text
+         */
+        function escapeHtml(text) {
+            var map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, function (m) { return map[m]; });
+        }
+    </script>
+</body>
+
+</html>
